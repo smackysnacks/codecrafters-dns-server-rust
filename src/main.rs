@@ -1,4 +1,8 @@
-#[allow(unused_imports)]
+#![warn(rust_2018_idioms)]
+#![allow(unused)]
+
+mod header;
+
 use std::net::UdpSocket;
 
 fn main() {
