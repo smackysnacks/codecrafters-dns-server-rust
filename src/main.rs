@@ -1,20 +1,36 @@
 #![warn(rust_2018_idioms)]
 #![allow(unused)]
 
-use tokio::net::UdpSocket;
+use std::{net::SocketAddr, sync::Arc};
+
+use tokio::{net::UdpSocket, sync::mpsc};
 
 mod header;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let sock = UdpSocket::bind("127.0.0.1:2053").await?;
-    let mut buf = [0; 512];
+    let sock = Arc::new(sock);
+    let (tx, mut rx) = mpsc::channel::<(Vec<u8>, SocketAddr)>(1000);
 
+    tokio::spawn({
+        let send_sock = sock.clone();
+
+        async move {
+            while let Some((bytes, addr)) = rx.recv().await {
+                match send_sock.send_to(&bytes, &addr).await {
+                    Ok(len) => println!("Sent {} bytes to {}", len, addr),
+                    Err(e) => eprintln!("Error sending to {}: {}", addr, e),
+                }
+            }
+        }
+    });
+
+    let mut buf = [0; 512];
     loop {
         let (len, addr) = sock.recv_from(&mut buf).await?;
-        let response = [];
-
         println!("Received {} bytes from {}", len, addr);
-        sock.send_to(&response, addr).await?;
+
+        tx.send((buf[..len].to_vec(), addr)).await?;
     }
 }
