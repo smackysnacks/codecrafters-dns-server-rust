@@ -1,27 +1,20 @@
 #![warn(rust_2018_idioms)]
 #![allow(unused)]
 
+use tokio::net::UdpSocket;
+
 mod header;
 
-use std::net::UdpSocket;
-
-fn main() {
-    let udp_socket = UdpSocket::bind("127.0.0.1:2053").expect("Failed to bind to address");
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let sock = UdpSocket::bind("127.0.0.1:2053").await?;
     let mut buf = [0; 512];
 
     loop {
-        match udp_socket.recv_from(&mut buf) {
-            Ok((size, source)) => {
-                println!("Received {} bytes from {}", size, source);
-                let response = [];
-                udp_socket
-                    .send_to(&response, source)
-                    .expect("Failed to send response");
-            }
-            Err(e) => {
-                eprintln!("Error receiving data: {}", e);
-                break;
-            }
-        }
+        let (len, addr) = sock.recv_from(&mut buf).await?;
+        let response = [];
+
+        println!("Received {} bytes from {}", len, addr);
+        sock.send_to(&response, addr).await?;
     }
 }

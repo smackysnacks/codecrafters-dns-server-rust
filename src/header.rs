@@ -6,7 +6,7 @@ pub enum Opcode {
     ServerStatusRequest = 2,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Header {
     /// A random ID assigned to query packets. Response packets must reply with the same ID.
     pub id: u16,
