@@ -7,6 +7,13 @@ use tokio::{net::UdpSocket, sync::mpsc};
 
 mod header;
 
+async fn handle(sock: Arc<UdpSocket>, bytes: Vec<u8>, addr: SocketAddr) {
+    match sock.send_to(&bytes, &addr).await {
+        Ok(len) => println!("Sent {} bytes to {}", len, addr),
+        Err(e) => eprintln!("Error sending to {}: {}", addr, e),
+    }
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let sock = UdpSocket::bind("127.0.0.1:2053").await?;
@@ -18,10 +25,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         async move {
             while let Some((bytes, addr)) = rx.recv().await {
-                match send_sock.send_to(&bytes, &addr).await {
-                    Ok(len) => println!("Sent {} bytes to {}", len, addr),
-                    Err(e) => eprintln!("Error sending to {}: {}", addr, e),
-                }
+                tokio::spawn(handle(send_sock.clone(), bytes, addr));
             }
         }
     });
