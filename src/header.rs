@@ -103,4 +103,24 @@ impl DnsHeader {
             additional_record_count,
         })
     }
+
+    pub fn serialize(&self) -> [u8; 12] {
+        [
+            self.id.to_be_bytes()[0],
+            self.id.to_be_bytes()[1],
+            ((self.opcode as u8) << 4)
+                | ((self.authoritative_answer as u8) << 3)
+                | ((self.truncation as u8) << 2)
+                | (self.recursion_desired as u8),
+            ((self.recursion_available as u8) << 7) | (self.reserved << 4) | self.response_code,
+            self.question_count.to_be_bytes()[0],
+            self.question_count.to_be_bytes()[1],
+            self.answer_record_count.to_be_bytes()[0],
+            self.answer_record_count.to_be_bytes()[1],
+            self.authority_record_count.to_be_bytes()[0],
+            self.authority_record_count.to_be_bytes()[1],
+            self.additional_record_count.to_be_bytes()[0],
+            self.additional_record_count.to_be_bytes()[1],
+        ]
+    }
 }

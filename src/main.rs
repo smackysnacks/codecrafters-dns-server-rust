@@ -1,6 +1,8 @@
 #![warn(rust_2018_idioms)]
 #![allow(unused)]
 
+use header::DnsHeader;
+
 use std::{net::SocketAddr, sync::Arc};
 
 use tokio::{net::UdpSocket, sync::mpsc};
@@ -8,9 +10,16 @@ use tokio::{net::UdpSocket, sync::mpsc};
 mod header;
 
 async fn handle(sock: Arc<UdpSocket>, bytes: Vec<u8>, addr: SocketAddr) {
-    // TODO: parse UDP Packet
+    let result = DnsHeader::try_parse(&bytes);
+    if let Err(e) = result {
+        eprintln!("Error parsing DNS packet: {}", e);
+        return;
+    }
 
-    match sock.send_to(&bytes, &addr).await {
+    let mut header = result.unwrap();
+    header.qr_indicator = true;
+
+    match sock.send_to(&header.serialize(), &addr).await {
         Ok(len) => println!("Sent {} bytes to {}", len, addr),
         Err(e) => eprintln!("Error sending to {}: {}", addr, e),
     }
