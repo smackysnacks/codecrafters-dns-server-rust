@@ -8,6 +8,8 @@ use tokio::{net::UdpSocket, sync::mpsc};
 mod header;
 
 async fn handle(sock: Arc<UdpSocket>, bytes: Vec<u8>, addr: SocketAddr) {
+    // TODO: parse UDP Packet
+
     match sock.send_to(&bytes, &addr).await {
         Ok(len) => println!("Sent {} bytes to {}", len, addr),
         Err(e) => eprintln!("Error sending to {}: {}", addr, e),
