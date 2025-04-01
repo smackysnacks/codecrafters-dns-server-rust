@@ -1,3 +1,5 @@
+use std::io::Write;
+
 #[allow(clippy::upper_case_acronyms)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum QType {
@@ -75,32 +77,20 @@ pub struct DnsQuestion {
 }
 
 impl Label {
-    pub fn serialize(&self) -> Vec<u8> {
-        let mut buf = Vec::with_capacity(self.content.len() + 1);
-
-        buf.push(self.content.len() as u8);
-        buf.extend_from_slice(self.content.as_bytes());
-
-        buf
+    pub fn serialize<W: Write>(&self, buf: &mut W) -> std::io::Result<()> {
+        buf.write_all(&[self.content.len() as u8])?;
+        buf.write_all(self.content.as_bytes())
     }
 }
 
 impl DnsQuestion {
-    pub fn serialize(&self) -> Vec<u8> {
-        let mut buf = Vec::with_capacity(32);
-
+    pub fn serialize<W: Write>(&self, buf: &mut W) -> std::io::Result<()> {
         for label in &self.name {
-            buf.extend_from_slice(&label.serialize());
+            label.serialize(buf)?;
         }
-        buf.push(0);
 
         let qtype = (self.qtype as u16).to_be_bytes();
-        buf.push(qtype[0]);
-        buf.push(qtype[1]);
         let class = (self.class as u16).to_be_bytes();
-        buf.push(class[0]);
-        buf.push(class[1]);
-
-        buf
+        buf.write_all(&[0, qtype[0], qtype[1], class[0], class[1]])
     }
 }

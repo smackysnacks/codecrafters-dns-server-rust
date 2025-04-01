@@ -23,7 +23,7 @@ async fn handle(sock: Arc<UdpSocket>, bytes: Vec<u8>, addr: SocketAddr) {
     header.qr_indicator = true;
 
     let mut buf = Vec::with_capacity(64);
-    buf.extend_from_slice(&header.serialize());
+    header.serialize(&mut buf);
 
     let question = DnsQuestion {
         name: vec![
@@ -37,7 +37,7 @@ async fn handle(sock: Arc<UdpSocket>, bytes: Vec<u8>, addr: SocketAddr) {
         qtype: QType::A,
         class: QClass::IN,
     };
-    buf.extend_from_slice(&question.serialize());
+    question.serialize(&mut buf);
 
     match sock.send_to(&buf, &addr).await {
         Ok(len) => println!("Sent {} bytes to {}", len, addr),

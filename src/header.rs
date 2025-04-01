@@ -1,3 +1,5 @@
+use std::io::Write;
+
 use crate::error::{DnsError, Result};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -80,8 +82,8 @@ impl DnsHeader {
         })
     }
 
-    pub fn serialize(&self) -> [u8; 12] {
-        [
+    pub fn serialize<W: Write>(&self, buf: &mut W) -> std::io::Result<()> {
+        buf.write_all(&[
             self.id.to_be_bytes()[0],
             self.id.to_be_bytes()[1],
             ((self.qr_indicator as u8) << 7)
@@ -98,6 +100,6 @@ impl DnsHeader {
             self.authority_record_count.to_be_bytes()[1],
             self.additional_record_count.to_be_bytes()[0],
             self.additional_record_count.to_be_bytes()[1],
-        ]
+        ])
     }
 }
