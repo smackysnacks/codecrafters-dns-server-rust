@@ -108,9 +108,10 @@ impl DnsHeader {
         [
             self.id.to_be_bytes()[0],
             self.id.to_be_bytes()[1],
-            ((self.opcode as u8) << 4)
-                | ((self.authoritative_answer as u8) << 3)
-                | ((self.truncation as u8) << 2)
+            ((self.qr_indicator as u8) << 7)
+                | ((self.opcode as u8) << 3)
+                | ((self.authoritative_answer as u8) << 2)
+                | ((self.truncation as u8) << 1)
                 | (self.recursion_desired as u8),
             ((self.recursion_available as u8) << 7) | (self.reserved << 4) | self.response_code,
             self.question_count.to_be_bytes()[0],
