@@ -6,6 +6,7 @@ mod header;
 mod question;
 
 use header::DnsHeader;
+use question::{DnsQuestion, Label, QClass, QType};
 
 use std::{net::SocketAddr, sync::Arc};
 
@@ -21,7 +22,24 @@ async fn handle(sock: Arc<UdpSocket>, bytes: Vec<u8>, addr: SocketAddr) {
     let mut header = result.unwrap();
     header.qr_indicator = true;
 
-    match sock.send_to(&header.serialize(), &addr).await {
+    let mut buf = Vec::with_capacity(64);
+    buf.extend_from_slice(&header.serialize());
+
+    let question = DnsQuestion {
+        name: vec![
+            Label {
+                content: String::from("codecrafters"),
+            },
+            Label {
+                content: String::from("io"),
+            },
+        ],
+        qtype: QType::A,
+        class: QClass::IN,
+    };
+    buf.extend_from_slice(&question.serialize());
+
+    match sock.send_to(&buf, &addr).await {
         Ok(len) => println!("Sent {} bytes to {}", len, addr),
         Err(e) => eprintln!("Error sending to {}: {}", addr, e),
     }

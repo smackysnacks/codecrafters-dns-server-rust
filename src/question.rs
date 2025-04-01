@@ -64,7 +64,7 @@ pub enum QClass {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Label {
-    content: String,
+    pub content: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -72,4 +72,35 @@ pub struct DnsQuestion {
     pub name: Vec<Label>,
     pub qtype: QType,
     pub class: QClass,
+}
+
+impl Label {
+    pub fn serialize(&self) -> Vec<u8> {
+        let mut buf = Vec::with_capacity(self.content.len() + 1);
+
+        buf.push(self.content.len() as u8);
+        buf.extend_from_slice(self.content.as_bytes());
+
+        buf
+    }
+}
+
+impl DnsQuestion {
+    pub fn serialize(&self) -> Vec<u8> {
+        let mut buf = Vec::with_capacity(32);
+
+        for label in &self.name {
+            buf.extend_from_slice(&label.serialize());
+        }
+        buf.push(0);
+
+        let qtype = (self.qtype as u16).to_be_bytes();
+        buf.push(qtype[0]);
+        buf.push(qtype[1]);
+        let class = (self.class as u16).to_be_bytes();
+        buf.push(class[0]);
+        buf.push(class[1]);
+
+        buf
+    }
 }
