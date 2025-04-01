@@ -1,13 +1,15 @@
 #![warn(rust_2018_idioms)]
 #![allow(unused)]
 
+mod error;
+mod header;
+mod question;
+
 use header::DnsHeader;
 
 use std::{net::SocketAddr, sync::Arc};
 
 use tokio::{net::UdpSocket, sync::mpsc};
-
-mod header;
 
 async fn handle(sock: Arc<UdpSocket>, bytes: Vec<u8>, addr: SocketAddr) {
     let result = DnsHeader::try_parse(&bytes);
