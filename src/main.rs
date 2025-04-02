@@ -5,7 +5,8 @@ mod error;
 mod message;
 
 use message::{
-    Class, DnsAnswer, DnsHeader, DnsMessage, DnsQuestion, Label, RData, ResourceRecord, Type,
+    Class, DnsAnswer, DnsHeader, DnsMessage, DnsQuestion, Label, Opcode, RData, ResourceRecord,
+    Type,
 };
 
 use std::{net::SocketAddr, sync::Arc};
@@ -18,9 +19,18 @@ async fn handle(sock: Arc<UdpSocket>, bytes: Vec<u8>, addr: SocketAddr) {
         eprintln!("Error parsing DNS packet: {}", e);
         return;
     }
-
     let mut header = result.unwrap();
+
     header.qr_indicator = true;
+    header.authoritative_answer = false;
+    header.truncation = false;
+    header.recursion_available = false;
+    header.reserved = 0;
+    if header.opcode == Opcode::StandardQuery {
+        header.response_code = 0;
+    } else {
+        header.response_code = 4;
+    }
     header.answer_record_count = 1;
 
     let question = DnsQuestion {

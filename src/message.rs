@@ -8,6 +8,7 @@ pub enum Opcode {
     StandardQuery = 0,
     InverseQuery = 1,
     ServerStatusRequest = 2,
+    Invalid,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -43,7 +44,7 @@ pub struct DnsHeader {
 impl DnsHeader {
     pub fn try_parse(buf: &[u8]) -> Result<Self> {
         if buf.len() < 12 {
-            return Err(DnsError::Parse);
+            return Err(DnsError::Parse("header length too small".into()));
         }
 
         let id = u16::from_be_bytes([buf[0], buf[1]]);
@@ -52,7 +53,7 @@ impl DnsHeader {
             0b0000_0000 => Opcode::StandardQuery,
             0b0000_1000 => Opcode::InverseQuery,
             0b0001_0000 => Opcode::ServerStatusRequest,
-            _ => return Err(DnsError::Parse),
+            _ => Opcode::Invalid,
         };
         let authoritative_answer = buf[2] & 0b0000_0100 != 0;
         let truncation = buf[2] & 0b0000_0010 != 0;

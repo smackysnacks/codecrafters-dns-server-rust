@@ -3,13 +3,13 @@ use std::fmt;
 
 #[derive(Debug)]
 pub enum DnsError {
-    Parse,
+    Parse(String),
 }
 
 impl fmt::Display for DnsError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
-            DnsError::Parse => write!(f, "failed to parse DNS packet"),
+            DnsError::Parse(ref s) => write!(f, "failed to parse DNS packet: {s}"),
         }
     }
 }
@@ -17,7 +17,7 @@ impl fmt::Display for DnsError {
 impl error::Error for DnsError {
     fn source(&self) -> Option<&(dyn error::Error + 'static)> {
         match *self {
-            DnsError::Parse => None,
+            DnsError::Parse(_) => None,
         }
     }
 }
