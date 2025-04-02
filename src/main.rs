@@ -2,11 +2,9 @@
 #![allow(unused)]
 
 mod error;
-mod header;
-mod question;
+mod message;
 
-use header::DnsHeader;
-use question::{DnsQuestion, Label, QClass, QType};
+use message::{Class, DnsHeader, DnsQuestion, Label, Type};
 
 use std::{net::SocketAddr, sync::Arc};
 
@@ -34,8 +32,8 @@ async fn handle(sock: Arc<UdpSocket>, bytes: Vec<u8>, addr: SocketAddr) {
                 content: String::from("io"),
             },
         ],
-        qtype: QType::A,
-        class: QClass::IN,
+        qtype: Type::A,
+        class: Class::IN,
     };
     question.serialize(&mut buf);
 
