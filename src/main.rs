@@ -98,9 +98,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut buf = [0; 512];
     loop {
-        let (len, addr) = sock.recv_from(&mut buf).await?;
-        println!("Received {} bytes from {}", len, addr);
-
-        tx.send((buf[..len].to_vec(), addr)).await?;
+        match sock.recv_from(&mut buf).await {
+            Ok((len, addr)) => {
+                println!("Received {} bytes from {}", len, addr);
+                tx.send((buf[..len].to_vec(), addr)).await?;
+            }
+            Err(e) => eprintln!("Error receiving: {e}"),
+        }
     }
 }
