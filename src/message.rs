@@ -204,6 +204,17 @@ pub enum RData {
     A { address: u32 },
 }
 
+impl RData {
+    pub fn serialize<W: Write>(&self, buf: &mut W) -> std::io::Result<()> {
+        match *self {
+            RData::A { address } => {
+                let address = address.to_be_bytes();
+                buf.write_all(&[0, 4, address[0], address[1], address[2], address[3]])
+            }
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ResourceRecord {
     pub name: Vec<Label>,
@@ -213,6 +224,23 @@ pub struct ResourceRecord {
     pub rdata: RData,
 }
 
+impl ResourceRecord {
+    pub fn serialize<W: Write>(&self, buf: &mut W) -> std::io::Result<()> {
+        for label in &self.name {
+            label.serialize(buf)?;
+        }
+
+        let atype = (self.atype as u16).to_be_bytes();
+        let class = (self.class as u16).to_be_bytes();
+        let ttl = self.ttl.to_be_bytes();
+        buf.write_all(&[
+            0, atype[0], atype[1], class[0], class[1], ttl[0], ttl[1], ttl[2], ttl[3],
+        ])?;
+
+        self.rdata.serialize(buf)
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DnsAnswer {
     pub resource_records: Vec<ResourceRecord>,
@@ -220,7 +248,11 @@ pub struct DnsAnswer {
 
 impl DnsAnswer {
     pub fn serialize<W: Write>(&self, buf: &mut W) -> std::io::Result<()> {
-        todo!()
+        for record in &self.resource_records {
+            record.serialize(buf)?;
+        }
+
+        Ok(())
     }
 }
 
@@ -235,7 +267,6 @@ impl DnsMessage {
     pub fn serialize<W: Write>(&self, buf: &mut W) -> std::io::Result<()> {
         self.header.serialize(buf)?;
         self.question.serialize(buf)?;
-
-        todo!()
+        self.answer.serialize(buf)
     }
 }
