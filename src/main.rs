@@ -5,8 +5,8 @@ mod error;
 mod message;
 
 use message::{
-    Class, DnsAnswer, DnsHeader, DnsMessage, DnsQuestion, Label, Opcode, RData, ResourceRecord,
-    Type,
+    ByteSerialize, Class, DnsAnswer, DnsHeader, DnsMessage, DnsQuestion, Label, Opcode, RData,
+    ResourceRecord, Type,
 };
 
 use std::{net::SocketAddr, sync::Arc};

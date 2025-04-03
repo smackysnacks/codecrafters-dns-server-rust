@@ -97,8 +97,10 @@ impl DnsHeader {
             additional_record_count,
         })
     }
+}
 
-    pub fn serialize<W: Write>(&self, buf: &mut W) -> std::io::Result<()> {
+impl ByteSerialize for DnsHeader {
+    fn serialize<W: Write>(&self, buf: &mut W) -> std::io::Result<()> {
         buf.write_all(&[
             self.id.to_be_bytes()[0],
             self.id.to_be_bytes()[1],
@@ -189,8 +191,8 @@ pub struct Label {
     pub content: String,
 }
 
-impl Label {
-    pub fn serialize<W: Write>(&self, buf: &mut W) -> std::io::Result<()> {
+impl ByteSerialize for Label {
+    fn serialize<W: Write>(&self, buf: &mut W) -> std::io::Result<()> {
         buf.write_all(&[self.content.len() as u8])?;
         buf.write_all(self.content.as_bytes())
     }
@@ -212,8 +214,8 @@ pub struct DnsQuestion {
     pub class: Class,
 }
 
-impl DnsQuestion {
-    pub fn serialize<W: Write>(&self, buf: &mut W) -> std::io::Result<()> {
+impl ByteSerialize for DnsQuestion {
+    fn serialize<W: Write>(&self, buf: &mut W) -> std::io::Result<()> {
         self.name.serialize(buf)?;
 
         let qtype = (self.qtype as u16).to_be_bytes();
@@ -227,8 +229,8 @@ pub enum RData {
     A { address: u32 },
 }
 
-impl RData {
-    pub fn serialize<W: Write>(&self, buf: &mut W) -> std::io::Result<()> {
+impl ByteSerialize for RData {
+    fn serialize<W: Write>(&self, buf: &mut W) -> std::io::Result<()> {
         match *self {
             RData::A { address } => {
                 let address = address.to_be_bytes();
@@ -247,8 +249,8 @@ pub struct ResourceRecord {
     pub rdata: RData,
 }
 
-impl ResourceRecord {
-    pub fn serialize<W: Write>(&self, buf: &mut W) -> std::io::Result<()> {
+impl ByteSerialize for ResourceRecord {
+    fn serialize<W: Write>(&self, buf: &mut W) -> std::io::Result<()> {
         self.name.serialize(buf)?;
 
         let atype = (self.atype as u16).to_be_bytes();
@@ -267,8 +269,8 @@ pub struct DnsAnswer {
     pub resource_records: Vec<ResourceRecord>,
 }
 
-impl DnsAnswer {
-    pub fn serialize<W: Write>(&self, buf: &mut W) -> std::io::Result<()> {
+impl ByteSerialize for DnsAnswer {
+    fn serialize<W: Write>(&self, buf: &mut W) -> std::io::Result<()> {
         for record in &self.resource_records {
             record.serialize(buf)?;
         }
@@ -284,8 +286,8 @@ pub struct DnsMessage {
     pub answer: DnsAnswer,
 }
 
-impl DnsMessage {
-    pub fn serialize<W: Write>(&self, buf: &mut W) -> std::io::Result<()> {
+impl ByteSerialize for DnsMessage {
+    fn serialize<W: Write>(&self, buf: &mut W) -> std::io::Result<()> {
         self.header.serialize(buf)?;
         self.question.serialize(buf)?;
         self.answer.serialize(buf)
