@@ -88,7 +88,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     tokio::spawn({
         let send_sock = sock.clone();
-
         async move {
             while let Some((bytes, addr)) = rx.recv().await {
                 tokio::spawn(handle(send_sock.clone(), bytes, addr));

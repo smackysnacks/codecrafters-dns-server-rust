@@ -2,6 +2,21 @@ use std::io::Write;
 
 use crate::error::{DnsError, Result};
 
+/// Trait defining behavior for types that can be serialized into bytes.
+///
+/// Implementors of this trait can write their data to any type that
+/// implements the [Write] trait.
+pub trait ByteSerialize {
+    /// Serializes the implementing type into bytes and writes them to the provided buffer.
+    ///
+    /// # Arguments
+    /// * `buf` - A mutable reference to something that implements [Write]
+    ///
+    /// # Returns
+    /// * Success or an I/O error
+    fn serialize<W: Write>(&self, buf: &mut W) -> std::io::Result<()>;
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum Opcode {
@@ -181,6 +196,15 @@ impl Label {
     }
 }
 
+impl ByteSerialize for Vec<Label> {
+    fn serialize<W: Write>(&self, buf: &mut W) -> std::io::Result<()> {
+        for label in self {
+            label.serialize(buf)?;
+        }
+        buf.write_all(&[0])
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DnsQuestion {
     pub name: Vec<Label>,
@@ -190,13 +214,11 @@ pub struct DnsQuestion {
 
 impl DnsQuestion {
     pub fn serialize<W: Write>(&self, buf: &mut W) -> std::io::Result<()> {
-        for label in &self.name {
-            label.serialize(buf)?;
-        }
+        self.name.serialize(buf)?;
 
         let qtype = (self.qtype as u16).to_be_bytes();
         let class = (self.class as u16).to_be_bytes();
-        buf.write_all(&[0, qtype[0], qtype[1], class[0], class[1]])
+        buf.write_all(&[qtype[0], qtype[1], class[0], class[1]])
     }
 }
 
@@ -227,15 +249,13 @@ pub struct ResourceRecord {
 
 impl ResourceRecord {
     pub fn serialize<W: Write>(&self, buf: &mut W) -> std::io::Result<()> {
-        for label in &self.name {
-            label.serialize(buf)?;
-        }
+        self.name.serialize(buf)?;
 
         let atype = (self.atype as u16).to_be_bytes();
         let class = (self.class as u16).to_be_bytes();
         let ttl = self.ttl.to_be_bytes();
         buf.write_all(&[
-            0, atype[0], atype[1], class[0], class[1], ttl[0], ttl[1], ttl[2], ttl[3],
+            atype[0], atype[1], class[0], class[1], ttl[0], ttl[1], ttl[2], ttl[3],
         ])?;
 
         self.rdata.serialize(buf)
