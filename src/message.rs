@@ -1,5 +1,7 @@
 use std::io::Write;
 
+use bytes::Buf;
+
 use crate::error::{DnsError, Result};
 
 /// Trait defining behavior for types that can be serialized into bytes.
@@ -57,29 +59,34 @@ pub struct DnsHeader {
 }
 
 impl DnsHeader {
-    pub fn try_parse(buf: &[u8]) -> Result<Self> {
+    pub fn try_parse(buf: &mut &[u8]) -> Result<Self> {
         if buf.len() < 12 {
             return Err(DnsError::Parse("header length too small".into()));
         }
 
-        let id = u16::from_be_bytes([buf[0], buf[1]]);
-        let qr_indicator = buf[2] & 0b1000_0000 != 0;
-        let opcode = match buf[2] & 0b0111_1000 {
+        let id = buf.get_u16();
+
+        let b = buf.get_u8();
+        let qr_indicator = b & 0b1000_0000 != 0;
+        let opcode = match b & 0b0111_1000 {
             0b0000_0000 => Opcode::StandardQuery,
             0b0000_1000 => Opcode::InverseQuery,
             0b0001_0000 => Opcode::ServerStatusRequest,
             _ => Opcode::Invalid,
         };
-        let authoritative_answer = buf[2] & 0b0000_0100 != 0;
-        let truncation = buf[2] & 0b0000_0010 != 0;
-        let recursion_desired = buf[2] & 0b0000_0001 != 0;
-        let recursion_available = buf[3] & 0b1000_0000 != 0;
-        let reserved = (buf[3] & 0b0111_0000) >> 4;
-        let response_code = buf[3] & 0b0000_1111;
-        let question_count = u16::from_be_bytes([buf[4], buf[5]]);
-        let answer_record_count = u16::from_be_bytes([buf[6], buf[7]]);
-        let authority_record_count = u16::from_be_bytes([buf[8], buf[9]]);
-        let additional_record_count = u16::from_be_bytes([buf[10], buf[11]]);
+        let authoritative_answer = b & 0b0000_0100 != 0;
+        let truncation = b & 0b0000_0010 != 0;
+        let recursion_desired = b & 0b0000_0001 != 0;
+
+        let b = buf.get_u8();
+        let recursion_available = b & 0b1000_0000 != 0;
+        let reserved = (b & 0b0111_0000) >> 4;
+        let response_code = b & 0b0000_1111;
+
+        let question_count = buf.get_u16();
+        let answer_record_count = buf.get_u16();
+        let authority_record_count = buf.get_u16();
+        let additional_record_count = buf.get_u16();
 
         Ok(Self {
             id,

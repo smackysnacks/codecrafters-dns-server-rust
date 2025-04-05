@@ -14,7 +14,9 @@ use std::{net::SocketAddr, sync::Arc};
 use tokio::{net::UdpSocket, sync::mpsc};
 
 async fn handle(sock: Arc<UdpSocket>, bytes: Vec<u8>, addr: SocketAddr) {
-    let result = DnsHeader::try_parse(&bytes);
+    let mut bytes = &*bytes;
+
+    let result = DnsHeader::try_parse(&mut bytes);
     if let Err(e) = result {
         eprintln!("Error parsing DNS packet: {}", e);
         return;

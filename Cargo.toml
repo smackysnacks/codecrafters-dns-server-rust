@@ -6,6 +6,5 @@ edition = "2024"
 rust-version = "1.85"
 
 [dependencies]
-nom = "8.0.0"
-zerocopy = "0.8.24"
+bytes = "1"
 tokio = { version = "1", features = ["full"] }
