@@ -1,24 +1,32 @@
 use std::error;
 use std::fmt;
 
+use bytes::TryGetError;
+
 #[derive(Debug)]
 pub enum DnsError {
-    Parse(String),
+    NotEnoughData(TryGetError),
 }
 
 impl fmt::Display for DnsError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match *self {
-            DnsError::Parse(ref s) => write!(f, "failed to parse DNS packet: {s}"),
+        match self {
+            DnsError::NotEnoughData(e) => write!(f, "not enough data to parse: {e}"),
         }
     }
 }
 
 impl error::Error for DnsError {
     fn source(&self) -> Option<&(dyn error::Error + 'static)> {
-        match *self {
-            DnsError::Parse(_) => None,
+        match self {
+            DnsError::NotEnoughData(e) => Some(e),
         }
+    }
+}
+
+impl From<TryGetError> for DnsError {
+    fn from(value: TryGetError) -> Self {
+        Self::NotEnoughData(value)
     }
 }
 

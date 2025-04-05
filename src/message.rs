@@ -1,6 +1,6 @@
 use std::io::Write;
 
-use bytes::Buf;
+use bytes::{Buf, TryGetError};
 
 use crate::error::{DnsError, Result};
 
@@ -61,7 +61,10 @@ pub struct DnsHeader {
 impl DnsHeader {
     pub fn try_parse(buf: &mut &[u8]) -> Result<Self> {
         if buf.len() < 12 {
-            return Err(DnsError::Parse("header length too small".into()));
+            return Err(DnsError::NotEnoughData(TryGetError {
+                requested: 12,
+                available: buf.len(),
+            }));
         }
 
         let id = buf.get_u16();
