@@ -5,8 +5,8 @@ mod error;
 mod message;
 
 use message::{
-    ByteSerialize, Class, DnsAnswer, DnsHeader, DnsMessage, DnsQuestion, Label, Opcode, RData,
-    ResourceRecord, Type,
+    ByteSerialize, Class, DnsAnswer, DnsHeader, DnsMessage, DnsQuestion, Label, Name, Opcode,
+    RData, ResourceRecord, Type,
 };
 
 use std::{net::SocketAddr, sync::Arc};
@@ -36,21 +36,8 @@ async fn handle(sock: Arc<UdpSocket>, bytes: Vec<u8>, addr: SocketAddr) {
     header.answer_record_count = 1;
 
     let question = DnsQuestion {
-        name: vec![
-            Label {
-                content: String::from("codecrafters"),
-            },
-            Label {
-                content: String::from("io"),
-            },
-        ],
-        qtype: Type::A,
-        class: Class::IN,
-    };
-
-    let answer = DnsAnswer {
-        resource_records: vec![ResourceRecord {
-            name: vec![
+        name: Name {
+            labels: vec![
                 Label {
                     content: String::from("codecrafters"),
                 },
@@ -58,6 +45,23 @@ async fn handle(sock: Arc<UdpSocket>, bytes: Vec<u8>, addr: SocketAddr) {
                     content: String::from("io"),
                 },
             ],
+        },
+        qtype: Type::A,
+        class: Class::IN,
+    };
+
+    let answer = DnsAnswer {
+        resource_records: vec![ResourceRecord {
+            name: Name {
+                labels: vec![
+                    Label {
+                        content: String::from("codecrafters"),
+                    },
+                    Label {
+                        content: String::from("io"),
+                    },
+                ],
+            },
             atype: Type::A,
             class: Class::IN,
             ttl: 60,

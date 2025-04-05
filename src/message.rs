@@ -208,9 +208,20 @@ impl ByteSerialize for Label {
     }
 }
 
-impl ByteSerialize for Vec<Label> {
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Name {
+    pub labels: Vec<Label>,
+}
+
+impl Name {
+    pub fn try_parse(buf: &mut &[u8]) -> Result<Self> {
+        todo!()
+    }
+}
+
+impl ByteSerialize for Name {
     fn serialize<W: Write>(&self, buf: &mut W) -> std::io::Result<()> {
-        for label in self {
+        for label in &self.labels {
             label.serialize(buf)?;
         }
         buf.write_all(&[0])
@@ -219,9 +230,17 @@ impl ByteSerialize for Vec<Label> {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DnsQuestion {
-    pub name: Vec<Label>,
+    pub name: Name,
     pub qtype: Type,
     pub class: Class,
+}
+
+impl DnsQuestion {
+    pub fn try_parse(buf: &mut &[u8]) -> Result<Self> {
+        let name = Name::try_parse(buf)?;
+
+        todo!()
+    }
 }
 
 impl ByteSerialize for DnsQuestion {
@@ -252,7 +271,7 @@ impl ByteSerialize for RData {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ResourceRecord {
-    pub name: Vec<Label>,
+    pub name: Name,
     pub atype: Type,
     pub class: Class,
     pub ttl: u32,
