@@ -179,6 +179,38 @@ pub enum Type {
     Wildcard = 255,
 }
 
+impl TryFrom<u16> for Type {
+    type Error = DnsError;
+
+    fn try_from(value: u16) -> std::result::Result<Self, Self::Error> {
+        match value {
+            1 => Ok(Type::A),
+            2 => Ok(Type::NS),
+            3 => Ok(Type::MD),
+            4 => Ok(Type::MF),
+            5 => Ok(Type::CNAME),
+            6 => Ok(Type::SOA),
+            7 => Ok(Type::MB),
+            8 => Ok(Type::MG),
+            9 => Ok(Type::MR),
+            10 => Ok(Type::NULL),
+            11 => Ok(Type::WKS),
+            12 => Ok(Type::PTR),
+            13 => Ok(Type::HINFO),
+            14 => Ok(Type::MINFO),
+            15 => Ok(Type::MX),
+            16 => Ok(Type::TXT),
+
+            252 => Ok(Type::AXFR),
+            253 => Ok(Type::MAILB),
+            254 => Ok(Type::MAILA),
+            255 => Ok(Type::Wildcard),
+
+            _ => Err(DnsError::InvalidType),
+        }
+    }
+}
+
 #[allow(clippy::upper_case_acronyms)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Class {
@@ -194,6 +226,23 @@ pub enum Class {
     // Question Class Only
     /// Any class
     Wildcard = 255,
+}
+
+impl TryFrom<u16> for Class {
+    type Error = DnsError;
+
+    fn try_from(value: u16) -> std::result::Result<Self, Self::Error> {
+        match value {
+            1 => Ok(Class::IN),
+            2 => Ok(Class::CS),
+            3 => Ok(Class::CH),
+            4 => Ok(Class::HS),
+
+            255 => Ok(Class::Wildcard),
+
+            _ => Err(DnsError::InvalidClass),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -239,7 +288,10 @@ impl DnsQuestion {
     pub fn try_parse(buf: &mut &[u8]) -> Result<Self> {
         let name = Name::try_parse(buf)?;
 
-        todo!()
+        let qtype = Type::try_from(buf.try_get_u16()?)?;
+        let class = Class::try_from(buf.try_get_u16()?)?;
+
+        Ok(Self { name, qtype, class })
     }
 }
 
