@@ -34,31 +34,35 @@ async fn handle(sock: Arc<UdpSocket>, bytes: Vec<u8>, addr: SocketAddr) {
     } else {
         header.response_code = 4;
     }
-    header.answer_record_count = 1;
+    header.answer_record_count = header.question_count;
 
     let mut questions = Vec::new();
-    let mut question = match DnsQuestion::try_parse(&mut bytes) {
-        Ok(question) => question,
-        Err(e) => {
-            eprintln!("Error parsing DnsQuestion: {}", e);
-            return;
-        }
-    };
-    questions.push(question);
+    for _ in 0..header.question_count {
+        let mut question = match DnsQuestion::try_parse(&mut bytes) {
+            Ok(question) => question,
+            Err(e) => {
+                eprintln!("Error parsing DnsQuestion: {}", e);
+                return;
+            }
+        };
+        questions.push(question);
+    }
 
     let mut answers = Vec::new();
-    let answer = DnsAnswer {
-        resource_records: vec![ResourceRecord {
-            name: questions[0].name.clone(),
-            atype: Type::A,
-            class: Class::IN,
-            ttl: 60,
-            rdata: RData::A {
-                address: u32::from_be_bytes([8, 8, 8, 8]),
-            },
-        }],
-    };
-    answers.push(answer);
+    for i in 0..header.question_count {
+        let answer = DnsAnswer {
+            resource_records: vec![ResourceRecord {
+                name: questions[i as usize].name.clone(),
+                atype: Type::A,
+                class: Class::IN,
+                ttl: 60,
+                rdata: RData::A {
+                    address: u32::from_be_bytes([8, 8, 8, 8]),
+                },
+            }],
+        };
+        answers.push(answer);
+    }
 
     let message = DnsMessage {
         header,
