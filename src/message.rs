@@ -264,7 +264,31 @@ pub struct Name {
 
 impl Name {
     pub fn try_parse(buf: &mut &[u8]) -> Result<Self> {
-        todo!()
+        let mut labels = Vec::new();
+        loop {
+            match buf.try_get_u8()? {
+                0 => break,
+
+                len => {
+                    if buf.remaining() < len as usize {
+                        return Err(DnsError::NotEnoughData(TryGetError {
+                            requested: len as usize,
+                            available: buf.remaining(),
+                        }));
+                    }
+                    let temp = buf.copy_to_bytes(len as usize);
+                    let s = String::from_utf8_lossy(&temp);
+
+                    labels.push(Label { content: s.into() });
+                    if labels.len() > 30 {
+                        // Constrain the maximum number of lables allowed
+                        break;
+                    }
+                }
+            }
+        }
+
+        Ok(Self { labels })
     }
 }
 
