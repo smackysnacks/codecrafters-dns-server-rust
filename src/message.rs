@@ -387,14 +387,20 @@ impl ByteSerialize for DnsAnswer {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DnsMessage {
     pub header: DnsHeader,
-    pub question: DnsQuestion,
-    pub answer: DnsAnswer,
+    pub questions: Vec<DnsQuestion>,
+    pub answers: Vec<DnsAnswer>,
 }
 
 impl ByteSerialize for DnsMessage {
     fn serialize<W: Write>(&self, buf: &mut W) -> std::io::Result<()> {
         self.header.serialize(buf)?;
-        self.question.serialize(buf)?;
-        self.answer.serialize(buf)
+        for question in &self.questions {
+            question.serialize(buf)?;
+        }
+        for answer in &self.answers {
+            answer.serialize(buf)?;
+        }
+
+        Ok(())
     }
 }
