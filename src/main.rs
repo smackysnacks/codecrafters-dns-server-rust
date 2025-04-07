@@ -16,19 +16,21 @@ use tokio::{net::UdpSocket, sync::mpsc};
 async fn handle(sock: Arc<UdpSocket>, bytes: Vec<u8>, addr: SocketAddr) {
     let mut bytes = &*bytes;
 
-    let result = DnsHeader::try_parse(&mut bytes);
-    if let Err(e) = result {
-        eprintln!("Error parsing DnsHeader: {}", e);
-        return;
-    }
-    let mut header = result.unwrap();
+    let mut header = match DnsHeader::try_parse(&mut bytes) {
+        Ok(header) => header,
+        Err(e) => {
+            eprintln!("Error parsing DnsHeader: {}", e);
+            return;
+        }
+    };
 
-    let result = DnsQuestion::try_parse(&mut bytes);
-    if let Err(e) = result {
-        eprintln!("Error parsing DnsQuestion: {}", e);
-        return;
-    }
-    let mut question = result.unwrap();
+    let mut question = match DnsQuestion::try_parse(&mut bytes) {
+        Ok(question) => question,
+        Err(e) => {
+            eprintln!("Error parsing DnsQuestion: {}", e);
+            return;
+        }
+    };
 
     header.qr_indicator = true;
     header.authoritative_answer = false;
