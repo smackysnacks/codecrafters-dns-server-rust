@@ -18,10 +18,17 @@ async fn handle(sock: Arc<UdpSocket>, bytes: Vec<u8>, addr: SocketAddr) {
 
     let result = DnsHeader::try_parse(&mut bytes);
     if let Err(e) = result {
-        eprintln!("Error parsing DNS packet: {}", e);
+        eprintln!("Error parsing DnsHeader: {}", e);
         return;
     }
     let mut header = result.unwrap();
+
+    let result = DnsQuestion::try_parse(&mut bytes);
+    if let Err(e) = result {
+        eprintln!("Error parsing DnsQuestion: {}", e);
+        return;
+    }
+    let mut question = result.unwrap();
 
     header.qr_indicator = true;
     header.authoritative_answer = false;
@@ -35,33 +42,9 @@ async fn handle(sock: Arc<UdpSocket>, bytes: Vec<u8>, addr: SocketAddr) {
     }
     header.answer_record_count = 1;
 
-    let question = DnsQuestion {
-        name: Name {
-            labels: vec![
-                Label {
-                    content: String::from("codecrafters"),
-                },
-                Label {
-                    content: String::from("io"),
-                },
-            ],
-        },
-        qtype: Type::A,
-        class: Class::IN,
-    };
-
     let answer = DnsAnswer {
         resource_records: vec![ResourceRecord {
-            name: Name {
-                labels: vec![
-                    Label {
-                        content: String::from("codecrafters"),
-                    },
-                    Label {
-                        content: String::from("io"),
-                    },
-                ],
-            },
+            name: question.name.clone(),
             atype: Type::A,
             class: Class::IN,
             ttl: 60,
