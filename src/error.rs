@@ -6,7 +6,7 @@ use bytes::TryGetError;
 #[derive(Debug)]
 pub enum DnsError {
     NotEnoughData(TryGetError),
-    InvalidName,
+    InvalidName(&'static str),
     InvalidType,
     InvalidClass,
 }
@@ -15,7 +15,7 @@ impl fmt::Display for DnsError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             DnsError::NotEnoughData(e) => write!(f, "not enough data to parse: {e}"),
-            DnsError::InvalidName => write!(f, "invalid name"),
+            DnsError::InvalidName(s) => write!(f, "invalid name: {s}"),
             DnsError::InvalidType => write!(f, "invalid type"),
             DnsError::InvalidClass => write!(f, "invalid class"),
         }

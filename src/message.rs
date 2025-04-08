@@ -282,19 +282,21 @@ impl<'packet> Name<'packet> {
                     let offset = u16::from_be_bytes([b1, b2]) as usize;
 
                     // check offset bounds
-                    if offset >= buf.remaining() {
-                        return Err(DnsError::InvalidName);
+                    if offset >= buf.get_ref().len() {
+                        return Err(DnsError::InvalidName("reference out of bounds"));
                     }
 
                     let packet = buf.get_ref();
                     let pos = packet[offset..]
                         .iter()
                         .position(|&b| b == 0)
-                        .ok_or(DnsError::InvalidName)?;
+                        .ok_or(DnsError::InvalidName("null terminator missing"))?;
 
                     labels.push(Label::Compressed {
-                        section: &packet[offset..pos],
-                    })
+                        section: &packet[offset..offset + pos],
+                    });
+
+                    break;
                 }
 
                 // uncompressed label
