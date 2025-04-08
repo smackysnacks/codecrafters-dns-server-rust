@@ -246,23 +246,29 @@ impl TryFrom<u16> for Class {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Label {
-    pub content: String,
+pub enum Label<'packet> {
+    Compressed { section: &'packet [u8] },
+    Uncompressed { content: String },
 }
 
-impl ByteSerialize for Label {
+impl ByteSerialize for Label<'_> {
     fn serialize<W: Write>(&self, buf: &mut W) -> std::io::Result<()> {
-        buf.write_all(&[self.content.len() as u8])?;
-        buf.write_all(self.content.as_bytes())
+        match self {
+            Label::Compressed { section } => buf.write_all(section),
+            Label::Uncompressed { content } => {
+                buf.write_all(&[content.len() as u8])?;
+                buf.write_all(content.as_bytes())
+            }
+        }
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Name {
-    pub labels: Vec<Label>,
+pub struct Name<'packet> {
+    pub labels: Vec<Label<'packet>>,
 }
 
-impl Name {
+impl Name<'_> {
     pub fn try_parse(buf: &mut &[u8]) -> Result<Self> {
         let mut labels = Vec::new();
         loop {
@@ -279,7 +285,7 @@ impl Name {
                     let temp = buf.copy_to_bytes(len as usize);
                     let s = String::from_utf8_lossy(&temp);
 
-                    labels.push(Label { content: s.into() });
+                    labels.push(Label::Uncompressed { content: s.into() });
                     if labels.len() > 30 {
                         // Constrain the maximum number of lables allowed
                         break;
@@ -292,7 +298,7 @@ impl Name {
     }
 }
 
-impl ByteSerialize for Name {
+impl ByteSerialize for Name<'_> {
     fn serialize<W: Write>(&self, buf: &mut W) -> std::io::Result<()> {
         for label in &self.labels {
             label.serialize(buf)?;
@@ -302,13 +308,13 @@ impl ByteSerialize for Name {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct DnsQuestion {
-    pub name: Name,
+pub struct DnsQuestion<'packet> {
+    pub name: Name<'packet>,
     pub qtype: Type,
     pub class: Class,
 }
 
-impl DnsQuestion {
+impl DnsQuestion<'_> {
     pub fn try_parse(buf: &mut &[u8]) -> Result<Self> {
         let name = Name::try_parse(buf)?;
 
@@ -319,7 +325,7 @@ impl DnsQuestion {
     }
 }
 
-impl ByteSerialize for DnsQuestion {
+impl ByteSerialize for DnsQuestion<'_> {
     fn serialize<W: Write>(&self, buf: &mut W) -> std::io::Result<()> {
         self.name.serialize(buf)?;
 
@@ -346,15 +352,15 @@ impl ByteSerialize for RData {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ResourceRecord {
-    pub name: Name,
+pub struct ResourceRecord<'packet> {
+    pub name: Name<'packet>,
     pub atype: Type,
     pub class: Class,
     pub ttl: u32,
     pub rdata: RData,
 }
 
-impl ByteSerialize for ResourceRecord {
+impl ByteSerialize for ResourceRecord<'_> {
     fn serialize<W: Write>(&self, buf: &mut W) -> std::io::Result<()> {
         self.name.serialize(buf)?;
 
@@ -370,11 +376,11 @@ impl ByteSerialize for ResourceRecord {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct DnsAnswer {
-    pub resource_records: Vec<ResourceRecord>,
+pub struct DnsAnswer<'packet> {
+    pub resource_records: Vec<ResourceRecord<'packet>>,
 }
 
-impl ByteSerialize for DnsAnswer {
+impl ByteSerialize for DnsAnswer<'_> {
     fn serialize<W: Write>(&self, buf: &mut W) -> std::io::Result<()> {
         for record in &self.resource_records {
             record.serialize(buf)?;
@@ -385,13 +391,13 @@ impl ByteSerialize for DnsAnswer {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct DnsMessage {
+pub struct DnsMessage<'packet> {
     pub header: DnsHeader,
-    pub questions: Vec<DnsQuestion>,
-    pub answers: Vec<DnsAnswer>,
+    pub questions: Vec<DnsQuestion<'packet>>,
+    pub answers: Vec<DnsAnswer<'packet>>,
 }
 
-impl ByteSerialize for DnsMessage {
+impl ByteSerialize for DnsMessage<'_> {
     fn serialize<W: Write>(&self, buf: &mut W) -> std::io::Result<()> {
         self.header.serialize(buf)?;
         for question in &self.questions {
