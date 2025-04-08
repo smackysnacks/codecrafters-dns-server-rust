@@ -1,4 +1,4 @@
-use std::io::Write;
+use std::io::{Cursor, Write};
 
 use bytes::{Buf, TryGetError};
 
@@ -59,11 +59,11 @@ pub struct DnsHeader {
 }
 
 impl DnsHeader {
-    pub fn try_parse(buf: &mut &[u8]) -> Result<Self> {
-        if buf.len() < 12 {
+    pub fn try_parse(buf: &mut Cursor<&[u8]>) -> Result<Self> {
+        if buf.remaining() < 12 {
             return Err(DnsError::NotEnoughData(TryGetError {
                 requested: 12,
-                available: buf.len(),
+                available: buf.remaining(),
             }));
         }
 
@@ -253,9 +253,9 @@ pub enum Label<'packet> {
 
 impl ByteSerialize for Label<'_> {
     fn serialize<W: Write>(&self, buf: &mut W) -> std::io::Result<()> {
-        match self {
+        match *self {
             Label::Compressed { section } => buf.write_all(section),
-            Label::Uncompressed { content } => {
+            Label::Uncompressed { ref content } => {
                 buf.write_all(&[content.len() as u8])?;
                 buf.write_all(content.as_bytes())
             }
@@ -268,13 +268,36 @@ pub struct Name<'packet> {
     pub labels: Vec<Label<'packet>>,
 }
 
-impl Name<'_> {
-    pub fn try_parse(buf: &mut &[u8]) -> Result<Self> {
+impl<'packet> Name<'packet> {
+    pub fn try_parse(buf: &mut Cursor<&'packet [u8]>) -> Result<Self> {
         let mut labels = Vec::new();
         loop {
             match buf.try_get_u8()? {
                 0 => break,
 
+                // compressed label
+                p if p & 0b1100_0000 == 0b1100_0000 => {
+                    let b1 = p & 0b0011_1111;
+                    let b2 = buf.try_get_u8()?;
+                    let offset = u16::from_be_bytes([b1, b2]) as usize;
+
+                    // check offset bounds
+                    if offset >= buf.remaining() {
+                        return Err(DnsError::InvalidName);
+                    }
+
+                    let packet = buf.get_ref();
+                    let pos = packet[offset..]
+                        .iter()
+                        .position(|&b| b == 0)
+                        .ok_or(DnsError::InvalidName)?;
+
+                    labels.push(Label::Compressed {
+                        section: &packet[offset..pos],
+                    })
+                }
+
+                // uncompressed label
                 len => {
                     if buf.remaining() < len as usize {
                         return Err(DnsError::NotEnoughData(TryGetError {
@@ -286,11 +309,12 @@ impl Name<'_> {
                     let s = String::from_utf8_lossy(&temp);
 
                     labels.push(Label::Uncompressed { content: s.into() });
-                    if labels.len() > 30 {
-                        // Constrain the maximum number of lables allowed
-                        break;
-                    }
                 }
+            }
+
+            if labels.len() > 30 {
+                // Constrain the maximum number of labels allowed
+                break;
             }
         }
 
@@ -314,8 +338,8 @@ pub struct DnsQuestion<'packet> {
     pub class: Class,
 }
 
-impl DnsQuestion<'_> {
-    pub fn try_parse(buf: &mut &[u8]) -> Result<Self> {
+impl<'packet> DnsQuestion<'packet> {
+    pub fn try_parse(buf: &mut Cursor<&'packet [u8]>) -> Result<Self> {
         let name = Name::try_parse(buf)?;
 
         let qtype = Type::try_from(buf.try_get_u16()?)?;

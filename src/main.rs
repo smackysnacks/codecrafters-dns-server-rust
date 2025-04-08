@@ -9,12 +9,12 @@ use message::{
     RData, ResourceRecord, Type,
 };
 
-use std::{net::SocketAddr, sync::Arc};
+use std::{io::Cursor, net::SocketAddr, sync::Arc};
 
 use tokio::{net::UdpSocket, sync::mpsc};
 
 async fn handle(sock: Arc<UdpSocket>, bytes: Vec<u8>, addr: SocketAddr) {
-    let mut bytes = &*bytes;
+    let mut bytes = Cursor::new(&*bytes);
 
     let mut header = match DnsHeader::try_parse(&mut bytes) {
         Ok(header) => header,
@@ -34,7 +34,6 @@ async fn handle(sock: Arc<UdpSocket>, bytes: Vec<u8>, addr: SocketAddr) {
     } else {
         header.response_code = 4;
     }
-    header.answer_record_count = header.question_count;
 
     let mut questions = Vec::new();
     for _ in 0..header.question_count {
@@ -48,6 +47,7 @@ async fn handle(sock: Arc<UdpSocket>, bytes: Vec<u8>, addr: SocketAddr) {
         questions.push(question);
     }
 
+    header.answer_record_count = header.question_count;
     let mut answers = Vec::new();
     for i in 0..header.question_count {
         let answer = DnsAnswer {
