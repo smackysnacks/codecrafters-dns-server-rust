@@ -299,6 +299,9 @@ impl<'packet> Name<'packet> {
                     break;
                 }
 
+                // TODO: don't bother copying or parsing bytes as a string... just reference the
+                // original packet.
+                //
                 // uncompressed label
                 len => {
                     if buf.remaining() < len as usize {
