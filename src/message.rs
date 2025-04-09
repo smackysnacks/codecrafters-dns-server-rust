@@ -248,17 +248,14 @@ impl TryFrom<u16> for Class {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Label<'packet> {
     Compressed { section: &'packet [u8] },
-    Uncompressed { content: String },
+    Uncompressed { section: &'packet [u8] },
 }
 
 impl ByteSerialize for Label<'_> {
     fn serialize<W: Write>(&self, buf: &mut W) -> std::io::Result<()> {
         match *self {
             Label::Compressed { section } => buf.write_all(section),
-            Label::Uncompressed { ref content } => {
-                buf.write_all(&[content.len() as u8])?;
-                buf.write_all(content.as_bytes())
-            }
+            Label::Uncompressed { section } => buf.write_all(section),
         }
     }
 }
@@ -299,9 +296,6 @@ impl<'packet> Name<'packet> {
                     break;
                 }
 
-                // TODO: don't bother copying or parsing bytes as a string... just reference the
-                // original packet.
-                //
                 // uncompressed label
                 len => {
                     if buf.remaining() < len as usize {
@@ -310,10 +304,12 @@ impl<'packet> Name<'packet> {
                             available: buf.remaining(),
                         }));
                     }
-                    let temp = buf.copy_to_bytes(len as usize);
-                    let s = String::from_utf8_lossy(&temp);
+                    let pos = buf.position() as usize;
+                    let len = len as usize;
+                    let section = &buf.get_ref()[pos - 1..pos + len];
+                    buf.advance(len);
 
-                    labels.push(Label::Uncompressed { content: s.into() });
+                    labels.push(Label::Uncompressed { section });
                 }
             }
 
