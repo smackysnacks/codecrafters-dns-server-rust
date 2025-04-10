@@ -432,21 +432,7 @@ impl<'packet> DnsMessage<'packet> {
             questions.push(question);
         }
 
-        // let mut answers = Vec::new();
-        // for i in 0..header.question_count {
-        //     let answer = DnsAnswer {
-        //         resource_records: vec![ResourceRecord {
-        //             name: questions[i as usize].name.clone(),
-        //             atype: Type::A,
-        //             class: Class::IN,
-        //             ttl: 60,
-        //             rdata: RData::A {
-        //                 address: u32::from_be_bytes([8, 8, 8, 8]),
-        //             },
-        //         }],
-        //     };
-        //     answers.push(answer);
-        // }
+        // TODO: implement DnsAnswer::try_parse
 
         Ok(Self {
             header,
