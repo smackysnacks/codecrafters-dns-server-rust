@@ -1,13 +1,10 @@
 #![warn(rust_2018_idioms)]
-#![allow(unused)]
+// #![allow(unused)]
 
 mod error;
 mod message;
 
-use message::{
-    ByteSerialize, Class, DnsAnswer, DnsHeader, DnsMessage, DnsQuestion, Label, Name, Opcode,
-    RData, ResourceRecord, Type,
-};
+use message::{ByteSerialize, DnsMessage, Opcode};
 
 use std::{io::Cursor, net::SocketAddr, sync::Arc};
 
@@ -16,63 +13,30 @@ use tokio::{net::UdpSocket, sync::mpsc};
 async fn handle(sock: Arc<UdpSocket>, bytes: Vec<u8>, addr: SocketAddr) {
     let mut bytes = Cursor::new(&*bytes);
 
-    let mut header = match DnsHeader::try_parse(&mut bytes) {
-        Ok(header) => header,
+    let mut message = match DnsMessage::try_parse(&mut bytes) {
+        Ok(message) => message,
         Err(e) => {
-            eprintln!("Error parsing DnsHeader: {}", e);
+            eprintln!("failed parsing packet as DnsMessage: {}", e);
             return;
         }
     };
 
-    header.qr_indicator = true;
-    header.authoritative_answer = false;
-    header.truncation = false;
-    header.recursion_available = false;
-    header.reserved = 0;
-    if header.opcode == Opcode::StandardQuery {
-        header.response_code = 0;
+    // TODO: forward request request
+
+    message.header.qr_indicator = true;
+    message.header.authoritative_answer = false;
+    message.header.truncation = false;
+    message.header.recursion_available = false;
+    message.header.reserved = 0;
+    if message.header.opcode == Opcode::StandardQuery {
+        message.header.response_code = 0;
     } else {
-        header.response_code = 4;
+        message.header.response_code = 4;
     }
-
-    let mut questions = Vec::new();
-    for _ in 0..header.question_count {
-        let mut question = match DnsQuestion::try_parse(&mut bytes) {
-            Ok(question) => question,
-            Err(e) => {
-                eprintln!("Error parsing DnsQuestion: {}", e);
-                return;
-            }
-        };
-        questions.push(question);
-    }
-
-    header.answer_record_count = header.question_count;
-    let mut answers = Vec::new();
-    for i in 0..header.question_count {
-        let answer = DnsAnswer {
-            resource_records: vec![ResourceRecord {
-                name: questions[i as usize].name.clone(),
-                atype: Type::A,
-                class: Class::IN,
-                ttl: 60,
-                rdata: RData::A {
-                    address: u32::from_be_bytes([8, 8, 8, 8]),
-                },
-            }],
-        };
-        answers.push(answer);
-    }
-
-    let message = DnsMessage {
-        header,
-        questions,
-        answers,
-    };
+    message.header.answer_record_count = message.header.question_count;
 
     let mut buf = Vec::with_capacity(128);
     message.serialize(&mut buf).unwrap();
-
     match sock.send_to(&buf, &addr).await {
         Ok(len) => println!("Sent {} bytes to {}", len, addr),
         Err(e) => eprintln!("Error sending to {}: {}", addr, e),

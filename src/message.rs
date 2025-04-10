@@ -422,6 +422,40 @@ pub struct DnsMessage<'packet> {
     pub answers: Vec<DnsAnswer<'packet>>,
 }
 
+impl<'packet> DnsMessage<'packet> {
+    pub fn try_parse(buf: &mut Cursor<&'packet [u8]>) -> Result<Self> {
+        let header = DnsHeader::try_parse(buf)?;
+
+        let mut questions = Vec::new();
+        for _ in 0..header.question_count {
+            let question = DnsQuestion::try_parse(buf)?;
+            questions.push(question);
+        }
+
+        // let mut answers = Vec::new();
+        // for i in 0..header.question_count {
+        //     let answer = DnsAnswer {
+        //         resource_records: vec![ResourceRecord {
+        //             name: questions[i as usize].name.clone(),
+        //             atype: Type::A,
+        //             class: Class::IN,
+        //             ttl: 60,
+        //             rdata: RData::A {
+        //                 address: u32::from_be_bytes([8, 8, 8, 8]),
+        //             },
+        //         }],
+        //     };
+        //     answers.push(answer);
+        // }
+
+        Ok(Self {
+            header,
+            questions,
+            answers: vec![],
+        })
+    }
+}
+
 impl ByteSerialize for DnsMessage<'_> {
     fn serialize<W: Write>(&self, buf: &mut W) -> std::io::Result<()> {
         self.header.serialize(buf)?;
