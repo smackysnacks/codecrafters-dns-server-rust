@@ -432,8 +432,6 @@ impl<'packet> DnsMessage<'packet> {
             questions.push(question);
         }
 
-        // TODO: implement DnsAnswer::try_parse
-
         Ok(Self {
             header,
             questions,
