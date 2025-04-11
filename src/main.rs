@@ -1,5 +1,4 @@
 #![warn(rust_2018_idioms)]
-// #![allow(unused)]
 
 mod error;
 mod message;
