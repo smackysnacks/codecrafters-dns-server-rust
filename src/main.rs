@@ -42,8 +42,21 @@ async fn handle_forward_query(
 
         answers.extend(reply.records);
     }
+
+    let mut header = message.header.clone();
+    header.qr_indicator = true;
+    header.authoritative_answer = false;
+    header.truncation = false;
+    header.recursion_available = false;
+    header.reserved = 0;
+    if header.opcode == Opcode::StandardQuery {
+        header.response_code = 0;
+    } else {
+        header.response_code = 4;
+    }
+    header.answer_record_count = answers.len() as u16;
     let reply_message = DnsMessage {
-        header: message.header,
+        header,
         questions: message.questions,
         records: answers,
     };

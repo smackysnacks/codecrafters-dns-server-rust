@@ -386,8 +386,24 @@ pub struct ResourceRecord<'packet> {
 }
 
 impl<'packet> ResourceRecord<'packet> {
-    pub fn try_parse(_buf: &mut Cursor<&'packet [u8]>) -> Result<Self> {
-        todo!()
+    pub fn try_parse(buf: &mut Cursor<&'packet [u8]>) -> Result<Self> {
+        let name = Name::try_parse(buf)?;
+
+        let atype = Type::try_from(buf.try_get_u16()?)?;
+        let class = Class::try_from(buf.try_get_u16()?)?;
+        let ttl = buf.try_get_u32()?;
+
+        // This assumes atype is a Type::A
+        let _rdlength = buf.try_get_u16()?;
+        let address = buf.try_get_u32()?;
+
+        Ok(Self {
+            name,
+            atype,
+            class,
+            ttl,
+            rdata: RData::A { address },
+        })
     }
 }
 
