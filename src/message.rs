@@ -405,6 +405,12 @@ pub struct DnsAnswer<'packet> {
     pub resource_records: Vec<ResourceRecord<'packet>>,
 }
 
+impl<'packet> DnsAnswer<'packet> {
+    pub fn try_parse(buf: &mut Cursor<&'packet [u8]>) -> Result<Self> {
+        todo!()
+    }
+}
+
 impl ByteSerialize for DnsAnswer<'_> {
     fn serialize<W: Write>(&self, buf: &mut W) -> std::io::Result<()> {
         for record in &self.resource_records {
@@ -432,10 +438,16 @@ impl<'packet> DnsMessage<'packet> {
             questions.push(question);
         }
 
+        let mut answers = Vec::new();
+        for _ in 0..header.answer_record_count {
+            let answer = DnsAnswer::try_parse(buf)?;
+            answers.push(answer);
+        }
+
         Ok(Self {
             header,
             questions,
-            answers: vec![],
+            answers,
         })
     }
 }

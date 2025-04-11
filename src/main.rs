@@ -9,6 +9,51 @@ use std::{env, io::Cursor, net::SocketAddr, sync::Arc};
 
 use tokio::{net::UdpSocket, sync::mpsc};
 
+async fn handle_forward_query(
+    sock: Arc<UdpSocket>,
+    addr: SocketAddr,
+    message: DnsMessage<'_>,
+    resolver: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let mut bufs = Vec::new();
+    for _ in 0..message.header.question_count {
+        bufs.push(Vec::with_capacity(128));
+    }
+
+    let mut answers = Vec::new();
+    for (i, buf) in bufs.iter_mut().enumerate() {
+        let mut header = message.header.clone();
+        header.question_count = 1;
+        let forward_message = DnsMessage {
+            header,
+            questions: vec![message.questions[i].clone()],
+            answers: vec![],
+        };
+
+        forward_message.serialize(buf)?;
+
+        let forward_sock = UdpSocket::bind("0.0.0.0:2054").await?;
+        forward_sock.connect(resolver).await?;
+        forward_sock.send(buf).await?;
+
+        buf.resize(128, 0);
+        let len = forward_sock.recv(buf).await?;
+        let reply = DnsMessage::try_parse(&mut Cursor::new(&buf[..len]))?;
+
+        answers.extend(reply.answers);
+    }
+    let reply_message = DnsMessage {
+        header: message.header,
+        questions: message.questions,
+        answers,
+    };
+    let mut reply_buf = Vec::with_capacity(1024);
+    reply_message.serialize(&mut reply_buf)?;
+    sock.send_to(&reply_buf, addr).await?;
+
+    Ok(())
+}
+
 async fn handle(
     sock: Arc<UdpSocket>,
     bytes: Vec<u8>,
@@ -26,8 +71,10 @@ async fn handle(
     };
 
     match resolver {
-        Some(_address) => {
-            // TODO: forward request to resolver at address
+        Some(address) => {
+            if let Err(e) = handle_forward_query(sock, addr, message, address).await {
+                eprintln!("failed forwarding query: {}", e);
+            }
         }
 
         None => {
