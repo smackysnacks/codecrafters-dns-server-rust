@@ -3,7 +3,7 @@
 mod error;
 mod message;
 
-use message::{ByteSerialize, Class, DnsAnswer, DnsMessage, Opcode, RData, ResourceRecord, Type};
+use message::{ByteSerialize, Class, DnsMessage, Opcode, RData, ResourceRecord, Type};
 
 use std::{env, io::Cursor, net::SocketAddr, sync::Arc};
 
@@ -27,7 +27,7 @@ async fn handle_forward_query(
         let forward_message = DnsMessage {
             header,
             questions: vec![message.questions[i].clone()],
-            answers: vec![],
+            records: vec![],
         };
 
         forward_message.serialize(buf)?;
@@ -40,12 +40,12 @@ async fn handle_forward_query(
         let len = forward_sock.recv(buf).await?;
         let reply = DnsMessage::try_parse(&mut Cursor::new(&buf[..len]))?;
 
-        answers.extend(reply.answers);
+        answers.extend(reply.records);
     }
     let reply_message = DnsMessage {
         header: message.header,
         questions: message.questions,
-        answers,
+        records: answers,
     };
     let mut reply_buf = Vec::with_capacity(1024);
     reply_message.serialize(&mut reply_buf)?;
@@ -90,21 +90,19 @@ async fn handle(
             }
             message.header.answer_record_count = message.header.question_count;
 
-            let mut answers = Vec::new();
+            let mut records = Vec::new();
             for i in 0..message.header.question_count {
-                let answer = DnsAnswer {
-                    resource_records: vec![ResourceRecord {
-                        name: message.questions[i as usize].name.clone(),
-                        atype: Type::A,
-                        class: Class::IN,
-                        ttl: 60,
-                        rdata: RData::A {
-                            address: u32::from_be_bytes([8, 8, 8, 8]),
-                        },
-                    }],
-                };
-                answers.push(answer);
+                records.push(ResourceRecord {
+                    name: message.questions[i as usize].name.clone(),
+                    atype: Type::A,
+                    class: Class::IN,
+                    ttl: 60,
+                    rdata: RData::A {
+                        address: u32::from_be_bytes([8, 8, 8, 8]),
+                    },
+                });
             }
+            message.records = records;
 
             let mut buf = Vec::with_capacity(128);
             message.serialize(&mut buf).unwrap();

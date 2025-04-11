@@ -385,6 +385,12 @@ pub struct ResourceRecord<'packet> {
     pub rdata: RData,
 }
 
+impl<'packet> ResourceRecord<'packet> {
+    pub fn try_parse(_buf: &mut Cursor<&'packet [u8]>) -> Result<Self> {
+        todo!()
+    }
+}
+
 impl ByteSerialize for ResourceRecord<'_> {
     fn serialize<W: Write>(&self, buf: &mut W) -> std::io::Result<()> {
         self.name.serialize(buf)?;
@@ -401,31 +407,10 @@ impl ByteSerialize for ResourceRecord<'_> {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct DnsAnswer<'packet> {
-    pub resource_records: Vec<ResourceRecord<'packet>>,
-}
-
-impl<'packet> DnsAnswer<'packet> {
-    pub fn try_parse(buf: &mut Cursor<&'packet [u8]>) -> Result<Self> {
-        todo!()
-    }
-}
-
-impl ByteSerialize for DnsAnswer<'_> {
-    fn serialize<W: Write>(&self, buf: &mut W) -> std::io::Result<()> {
-        for record in &self.resource_records {
-            record.serialize(buf)?;
-        }
-
-        Ok(())
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DnsMessage<'packet> {
     pub header: DnsHeader,
     pub questions: Vec<DnsQuestion<'packet>>,
-    pub answers: Vec<DnsAnswer<'packet>>,
+    pub records: Vec<ResourceRecord<'packet>>,
 }
 
 impl<'packet> DnsMessage<'packet> {
@@ -438,16 +423,16 @@ impl<'packet> DnsMessage<'packet> {
             questions.push(question);
         }
 
-        let mut answers = Vec::new();
+        let mut records = Vec::new();
         for _ in 0..header.answer_record_count {
-            let answer = DnsAnswer::try_parse(buf)?;
-            answers.push(answer);
+            let record = ResourceRecord::try_parse(buf)?;
+            records.push(record);
         }
 
         Ok(Self {
             header,
             questions,
-            answers,
+            records,
         })
     }
 }
@@ -458,8 +443,8 @@ impl ByteSerialize for DnsMessage<'_> {
         for question in &self.questions {
             question.serialize(buf)?;
         }
-        for answer in &self.answers {
-            answer.serialize(buf)?;
+        for record in &self.records {
+            record.serialize(buf)?;
         }
 
         Ok(())
