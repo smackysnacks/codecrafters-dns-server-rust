@@ -246,17 +246,13 @@ impl TryFrom<u16> for Class {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Label<'packet> {
-    Compressed { section: &'packet [u8] },
-    Uncompressed { section: &'packet [u8] },
+pub struct Label<'packet> {
+    section: &'packet [u8],
 }
 
 impl ByteSerialize for Label<'_> {
     fn serialize<W: Write>(&self, buf: &mut W) -> std::io::Result<()> {
-        match *self {
-            Label::Compressed { section } => buf.write_all(section),
-            Label::Uncompressed { section } => buf.write_all(section),
-        }
+        buf.write_all(self.section)
     }
 }
 
@@ -289,7 +285,7 @@ impl<'packet> Name<'packet> {
                         .position(|&b| b == 0)
                         .ok_or(DnsError::InvalidName("null terminator missing"))?;
 
-                    labels.push(Label::Compressed {
+                    labels.push(Label {
                         section: &packet[offset..offset + pos],
                     });
 
@@ -309,7 +305,7 @@ impl<'packet> Name<'packet> {
                     let section = &buf.get_ref()[pos - 1..pos + len];
                     buf.advance(len);
 
-                    labels.push(Label::Uncompressed { section });
+                    labels.push(Label { section });
                 }
             }
 
@@ -342,7 +338,6 @@ pub struct DnsQuestion<'packet> {
 impl<'packet> DnsQuestion<'packet> {
     pub fn try_parse(buf: &mut Cursor<&'packet [u8]>) -> Result<Self> {
         let name = Name::try_parse(buf)?;
-
         let qtype = Type::try_from(buf.try_get_u16()?)?;
         let class = Class::try_from(buf.try_get_u16()?)?;
 
