@@ -1,4 +1,7 @@
-use std::io::{Cursor, Write};
+use std::{
+    borrow::Cow,
+    io::{Cursor, Write},
+};
 
 use bytes::{Buf, TryGetError};
 
@@ -247,12 +250,12 @@ impl TryFrom<u16> for Class {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Label<'packet> {
-    section: &'packet [u8],
+    section: Cow<'packet, [u8]>,
 }
 
 impl ByteSerialize for Label<'_> {
     fn serialize<W: Write>(&self, buf: &mut W) -> std::io::Result<()> {
-        buf.write_all(self.section)
+        buf.write_all(&self.section)
     }
 }
 
@@ -286,7 +289,7 @@ impl<'packet> Name<'packet> {
                         .ok_or(DnsError::InvalidName("null terminator missing"))?;
 
                     labels.push(Label {
-                        section: &packet[offset..offset + pos],
+                        section: Cow::from(&packet[offset..offset + pos]),
                     });
 
                     break;
@@ -305,7 +308,9 @@ impl<'packet> Name<'packet> {
                     let section = &buf.get_ref()[pos - 1..pos + len];
                     buf.advance(len);
 
-                    labels.push(Label { section });
+                    labels.push(Label {
+                        section: Cow::from(section),
+                    });
                 }
             }
 
