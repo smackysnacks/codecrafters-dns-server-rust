@@ -62,7 +62,8 @@ async fn handle_forward_query(
     };
     let mut reply_buf = Vec::with_capacity(1024);
     reply_message.serialize(&mut reply_buf)?;
-    sock.send_to(&reply_buf, addr).await?;
+    let len_sent = sock.send_to(&reply_buf, addr).await?;
+    println!("Sent {} bytes to {}", len_sent, addr);
 
     Ok(())
 }
